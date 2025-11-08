@@ -368,16 +368,13 @@ If you have any questions or run into issues, please open an issue on GitHub.
 
 -----
 
-\<div align="center"\>
-
-### 🛡️ Protect Your Network with AI-Powered Security 🛡️
-
-**Real-time threat detection for modern cybersecurity**
-
-*Enterprise-ready network monitoring with machine learning intelligence*
-
-\</div\>
+<div align="center">
+<h3>🛡️ Protect Your Network with AI-Powered Security 🛡️</h3>
+<strong>Real-time threat detection for modern cybersecurity</strong>
+<em>Enterprise-ready network monitoring with machine learning intelligence</em>
+</div>
 
 -----
 
 **⭐ If you find this project helpful, please give it a star on GitHub\!**
+
