@@ -1,8 +1,6 @@
 
-
 ### 📋 README.md
 
-````markdown
 # 🛡️ Real-Time Network Packet Classifier
 
 ![Network Security](https://img.shields.io/badge/Network-Security-blue)
@@ -383,6 +381,3 @@ If you have any questions or run into issues, please open an issue on GitHub.
 -----
 
 **⭐ If you find this project helpful, please give it a star on GitHub\!**
-
-```
-
