@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Network Packet Classifier</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #2c3e50, #3498db);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        .stats {
+            display: flex;
+            justify-content: space-around;
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .stat-box {
+            text-align: center;
+            padding: 15px;
+            border-radius: 10px;
+            background: white;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-width: 150px;
+        }
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #3498db;
+        }
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+        }
+        .controls {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #eee;
+            text-align: center;
+        }
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 1em;
+            margin: 0 10px;
+            transition: all 0.3s ease;
+        }
+        .btn:hover {
+            background: #2980b9;
+            transform: translateY(-2px);
+        }
+        .btn-success {
+            background: #27ae60;
+        }
+        .btn-success:hover {
+            background: #219a52;
+        }
+        .btn-warning {
+            background: #f39c12;
+        }
+        .btn-warning:hover {
+            background: #d68910;
+        }
+        .btn-danger {
+            background: #e74c3c;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn:disabled {
+            background: #95a5a6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+        }
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .malicious {
+            color: #e74c3c;
+            font-weight: bold;
+            background-color: #fdf2f2;
+        }
+        .benign {
+            color: #27ae60;
+            font-weight: bold;
+            background-color: #f2fdf2;
+        }
+        .confidence-high {
+            color: #27ae60;
+        }
+        .confidence-medium {
+            color: #f39c12;
+        }
+        .confidence-low {
+            color: #e74c3c;
+        }
+        .packet-text {
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .status {
+            padding: 15px;
+            text-align: center;
+            background: #e8f4f8;
+            border-top: 1px solid #ddd;
+            font-weight: bold;
+        }
+        .protocol-tag {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .tcp {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+        .udp {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+        .other {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+        .type-tag {
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+        .real {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        .simulated {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        .alert-banner {
+            background: #ffebee;
+            color: #c62828;
+            padding: 10px;
+            text-align: center;
+            font-weight: bold;
+            border-left: 4px solid #c62828;
+            margin: 10px 0;
+            display: none;
+        }
+        .admin-warning {
+            background: #fff3cd;
+            color: #856404;
+            padding: 10px;
+            text-align: center;
+            border-left: 4px solid #ffc107;
+            margin: 10px 0;
+        }
+        .status-popup {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+            animation: slideDown 0.5s ease-out;
+        }
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+        .status-warning {
+            background: #fff3cd;
+            color: #856404;
+            border-left: 4px solid #ffc107;
+        }
+        @keyframes slideDown {
+            from { top: -100px; opacity: 0; }
+            to { top: 20px; opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .stats {
+                flex-direction: column;
+            }
+            .btn {
+                display: block;
+                width: 200px;
+                margin: 10px auto;
+            }
+            .packet-text {
+                max-width: 150px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="status-popup" id="statusPopup"></div>
+    
+    <div class="container">
+        <header>
+            <h1>📡 Real-Time Network Packet Classifier</h1>
+            <p class="subtitle">AI-Powered Network Security Monitoring</p>
+        </header>
+        
+        <div class="admin-warning" id="adminWarning" style="display: none;">
+            ⚠️ <strong>ADMIN RIGHTS REQUIRED</strong> for real packet capture. 
+            Run PowerShell/CMD as Administrator and restart the app.
+        </div>
+        
+        <div class="stats">
+            <div class="stat-box">
+                <div class="stat-number" id="totalPackets">0</div>
+                <div class="stat-label">Total Packets</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="benignCount">0</div>
+                <div class="stat-label">Benign</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="maliciousCount">0</div>
+                <div class="stat-label">Malicious</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="accuracyRate">0%</div>
+                <div class="stat-label">Accuracy</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="threatLevel">LOW</div>
+                <div class="stat-label">Threat Level</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="adminStatus">❌</div>
+                <div class="stat-label">Admin Rights</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn btn-success" onclick="startRealCapture()" id="realCaptureBtn">📡 Real Capture</button>
+            <button class="btn btn-warning" onclick="startSimulation()">🎮 Simulation</button>
+            <button class="btn btn-danger" onclick="stopCapture()">⏹️ Stop</button>
+            <button class="btn" onclick="clearResults()">🗑️ Clear</button>
+            <button class="btn" onclick="checkAdminStatus()">🔐 Check Admin</button>
+        </div>
+        
+        <div id="alertBanner" class="alert-banner">
+            🚨 HIGH THREAT DETECTED! Multiple malicious packets identified.
+        </div>
+        
+        <div style="overflow-x: auto;">
+            <table id="resultsTable">
+                <thead>
+                    <tr>
+                        <th>Source → Destination</th>
+                        <th>Protocol</th>
+                        <th>Type</th>
+                        <th>Packet Content</th>
+                        <th>Classification</th>
+                        <th>Confidence</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="resultsBody"></tbody>
+            </table>
+        </div>
+        
+        <div class="status" id="statusBar">
+            Status: Starting packet simulation...
+        </div>
+    </div>
+
+    <script>
+        let packetCount = 0;
+        let benignCount = 0;
+        let maliciousCount = 0;
+        let highThreatCount = 0;
+        let isAdminUser = false;
+        
+        const evtSource = new EventSource("/stream");
+        const tbody = document.getElementById("resultsBody");
+        const statusBar = document.getElementById("statusBar");
+        const alertBanner = document.getElementById("alertBanner");
+        const statusPopup = document.getElementById("statusPopup");
+        const adminWarning = document.getElementById("adminWarning");
+        const realCaptureBtn = document.getElementById("realCaptureBtn");
+
+        // Check admin status on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAdminStatus();
+        });
+
+        // Update stats every second
+        setInterval(updateStats, 1000);
+
+        evtSource.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            const now = new Date(data.timestamp);
+            const timeString = now.toLocaleTimeString();
+
+            // Update counters
+            packetCount++;
+            if (data.prediction === 'benign') {
+                benignCount++;
+            } else {
+                maliciousCount++;
+                if (data.confidence > 80) {
+                    highThreatCount++;
+                    showAlert(`🚨 Malicious packet detected! Confidence: ${data.confidence}%`);
+                }
+            }
+
+            // Add row to table
+            const row = tbody.insertRow(0);
+            
+            // Determine confidence class
+            let confidenceClass = "confidence-low";
+            if (data.confidence > 80) confidenceClass = "confidence-high";
+            else if (data.confidence > 60) confidenceClass = "confidence-medium";
+
+            // Protocol and type tags
+            const protocolClass = data.protocol ? data.protocol.toLowerCase() : 'other';
+            const typeClass = data.real_packet ? 'real' : 'simulated';
+            const typeText = data.real_packet ? '🌐 REAL' : '🎮 SIM';
+
+            row.innerHTML = `
+                <td>${data.src}:${data.sport} → ${data.dst}:${data.dport}</td>
+                <td><span class="protocol-tag ${protocolClass}">${data.protocol}</span></td>
+                <td><span class="type-tag ${typeClass}">${typeText}</span></td>
+                <td class="packet-text" title="${data.text}">${data.text}</td>
+                <td class="${data.prediction}">${data.prediction.toUpperCase()}</td>
+                <td class="${confidenceClass}">${data.confidence}%</td>
+                <td>${timeString}</td>
+            `;
+
+            // Highlight malicious rows
+            if (data.prediction === 'malicious') {
+                row.style.animation = 'pulse 0.5s';
+            }
+
+            // Limit table rows
+            if (tbody.rows.length > 100) {
+                tbody.deleteRow(-1);
+            }
+        };
+
+        evtSource.onerror = function(event) {
+            console.error("SSE Error:", event);
+            statusBar.innerHTML = "⚠️ Connection error - trying to reconnect...";
+            statusBar.style.background = "#ffebee";
+        };
+
+        function updateStats() {
+            document.getElementById("totalPackets").textContent = packetCount;
+            document.getElementById("benignCount").textContent = benignCount;
+            document.getElementById("maliciousCount").textContent = maliciousCount;
+            const accuracy = packetCount > 0 ? Math.round((benignCount / packetCount) * 100) : 0;
+            document.getElementById("accuracyRate").textContent = accuracy + "%";
+
+            // Update threat level
+            let threatLevel = "LOW";
+            let threatColor = "#27ae60";
+            if (maliciousCount > 10) {
+                threatLevel = "HIGH";
+                threatColor = "#e74c3c";
+                alertBanner.style.display = 'block';
+            } else if (maliciousCount > 3) {
+                threatLevel = "MEDIUM";
+                threatColor = "#f39c12";
+                alertBanner.style.display = 'none';
+            } else {
+                threatLevel = "LOW";
+                threatColor = "#27ae60";
+                alertBanner.style.display = 'none';
+            }
+            document.getElementById("threatLevel").textContent = threatLevel;
+            document.getElementById("threatLevel").style.color = threatColor;
+
+            // Update admin status
+            document.getElementById("adminStatus").textContent = isAdminUser ? "✅" : "❌";
+            document.getElementById("adminStatus").style.color = isAdminUser ? "#27ae60" : "#e74c3c";
+        }
+
+        function showAlert(message) {
+            alertBanner.textContent = message;
+            alertBanner.style.display = 'block';
+            setTimeout(() => {
+                alertBanner.style.display = 'none';
+            }, 5000);
+        }
+
+        function showStatusPopup(message, type = 'info') {
+            statusPopup.textContent = message;
+            statusPopup.className = 'status-popup';
+            statusPopup.classList.add(`status-${type}`);
+            statusPopup.style.display = 'block';
+            
+            setTimeout(() => {
+                statusPopup.style.display = 'none';
+            }, 3000);
+        }
+
+        function checkAdminStatus() {
+            fetch('/check_admin')
+                .then(response => response.json())
+                .then(data => {
+                    isAdminUser = data.is_admin;
+                    if (isAdminUser) {
+                        showStatusPopup("✅ Running with Administrator rights", "success");
+                        adminWarning.style.display = 'none';
+                        realCaptureBtn.disabled = false;
+                    } else {
+                        showStatusPopup("❌ Admin rights required for real capture", "error");
+                        adminWarning.style.display = 'block';
+                        realCaptureBtn.disabled = false;
+                    }
+                })
+                .catch(error => {
+                    console.error("Error checking admin status:", error);
+                });
+        }
+
+        function clearResults() {
+            tbody.innerHTML = "";
+            packetCount = 0;
+            benignCount = 0;
+            maliciousCount = 0;
+            highThreatCount = 0;
+            updateStats();
+            statusBar.innerHTML = "Status: Results cleared";
+            statusBar.style.background = "#e8f4f8";
+            showStatusPopup("All results have been cleared", "info");
+        }
+
+        function startRealCapture() {
+            fetch('/start_real')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        statusBar.innerHTML = "Status: " + data.message;
+                        statusBar.style.background = "#f8d7da";
+                        showStatusPopup(data.message, "error");
+                    } else {
+                        statusBar.innerHTML = "Status: Real packet capture started";
+                        statusBar.style.background = "#d4edda";
+                        showStatusPopup("Real packet capture started successfully", "success");
+                    }
+                })
+                .catch(error => {
+                    statusBar.innerHTML = "Status: Real capture failed";
+                    statusBar.style.background = "#f8d7da";
+                    showStatusPopup("Failed to start real capture", "error");
+                });
+        }
+
+        function startSimulation() {
+            fetch('/start_simulation')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        statusBar.innerHTML = "Status: " + data.message;
+                        statusBar.style.background = "#f8d7da";
+                        showStatusPopup(data.message, "error");
+                    } else {
+                        statusBar.innerHTML = "Status: Simulation mode active";
+                        statusBar.style.background = "#fff3cd";
+                        showStatusPopup("Simulation mode activated", "warning");
+                    }
+                })
+                .catch(error => {
+                    statusBar.innerHTML = "Status: Simulation failed to start";
+                    statusBar.style.background = "#f8d7da";
+                    showStatusPopup("Failed to start simulation", "error");
+                });
+        }
+
+        function stopCapture() {
+            fetch('/stop_capture')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'error') {
+                        statusBar.innerHTML = "Status: " + data.message;
+                        statusBar.style.background = "#f8d7da";
+                        showStatusPopup(data.message, "error");
+                    } else {
+                        statusBar.innerHTML = "Status: Capture stopped";
+                        statusBar.style.background = "#f8f9fa";
+                        showStatusPopup("Capture stopped successfully", "info");
+                    }
+                })
+                .catch(error => {
+                    statusBar.innerHTML = "Status: Failed to stop capture";
+                    statusBar.style.background = "#f8d7da";
+                    showStatusPopup("Failed to stop capture", "error");
+                });
+        }
+
+        // Add CSS animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes pulse {
+                0% { background-color: normal; }
+                50% { background-color: #ffebee; }
+                100% { background-color: normal; }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
