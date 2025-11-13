@@ -166,15 +166,16 @@ Open a Pull Request
 ---
 
 ## 🧑‍💻 Author
-**Afsal Rahiman T** - Project Creator & Maintainer
+
+**[Afsal Rahiman T](https://github.com/afsal1122)** - Project Creator & Maintainer
 
 ---
 
-## 🪪 License
+## 📄 License
 
 **This project is released for educational and personal use.
 Feel free to modify and expand it for research or development purposes.**
 
 ---
 
-⭐ If you find this project useful, consider starring it on GitHub! ⭐
+**⭐ If you find this project useful, consider starring it on GitHub! ⭐**
