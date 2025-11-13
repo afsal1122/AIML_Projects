@@ -1,0 +1,7 @@
+opencv-python
+mediapipe
+autopy
+SpeechRecognition
+pyaudio
+sounddevice
+numpy
