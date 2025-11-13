@@ -347,11 +347,11 @@ We welcome contributions\! Please feel free to submit pull requests.
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://www.google.com/search?q=LICENSE) file for details.
+**This project is released for educational and personal use. Feel free to modify and expand it for research or development purposes.**
 
 ## 👥 Contributors
 
-  - **[Afsal](https://github.com/afsal1122)** - Project Creator & Maintainer
+  - **[Afsal Rahiman T](https://github.com/afsal1122)** - Project Creator & Maintainer
 
 ## 🙏 Acknowledgments
 
@@ -377,4 +377,5 @@ If you have any questions or run into issues, please open an issue on GitHub.
 -----
 
 **⭐ If you find this project helpful, please give it a star on GitHub\!**
+
 
