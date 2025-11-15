@@ -124,16 +124,45 @@ The camera window will appear — keep your hand inside the green control region
 - 🧵 Threading: Separate thread for speech typing
 - 🛡️ Error Handling: Graceful fallback and recovery from errors
 
-⌨️ Keyboard Shortcuts
-Key	Function
-ESC	Exit the application
-d (optional)	Toggle debug visuals (landmarks, info)
+### ⌨️ Keyboard Shortcuts
 
-🧑‍💻 Author
-Afsal Rahiman T
+| Key |	Function |
+|-----|----------|
+| ESC	| Exit the application |
+| d (optional) |	Toggle debug visuals (landmarks, info) |
 
-🪪 License
-This project is released for educational and personal use.
-Feel free to modify and expand it for research or development purposes.
+## 🧑‍💻 Author
+- **[Afsal Rahiman T](https://github.com/afsal1122)** - Project Creator & Maintainer
 
-⭐ If you find this project useful, consider starring it on GitHub! ⭐
+---
+
+## 🙏 Acknowledgments
+
+- **MediaPipe team** at Google for their incredible hand-tracking model.
+- **OpenCV team** for the essential computer vision library.
+- **Autopy developers** for a simple, cross-platform system control library.
+- **SpeechRecognition library** for making voice control so accessible.
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Please feel free to submit pull requests.
+```
+Fork the repository
+Create a feature branch (git checkout -b feature/AmazingFeature)
+Commit your changes (git commit -m 'Add some AmazingFeature')
+Push to the branch (git push origin feature/AmazingFeature)
+Open a Pull Request
+```
+
+---
+
+## 📄 License
+
+**This project is released for educational and personal use.**
+**Feel free to modify and expand it for research or development purposes.**
+
+---
+
+**⭐ If you find this project useful, consider starring it on GitHub! ⭐**
