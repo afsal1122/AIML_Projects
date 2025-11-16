@@ -1,0 +1,22 @@
+brand,model,price,ram_gb,storage_gb,storage_type,cpu_brand,cpu_series,cpu_generation,gpu_brand,gpu_model,gpu_type,display_size_in,resolution,weight_kg,os_category,user_rating,ppi,age_years,is_gaming,is_ultrabook,cpu_score
+HP,Victus,72990,16,512,SSD,Intel,Core i5,12,NVIDIA,RTX 3050,Discrete,15.6,1920x1080,2.3,Windows,4.5,141.21,1,1,0,8
+Apple,MacBook Air,89990,8,256,SSD,Apple,M1,0,Apple,Integrated,Integrated,13.3,2560x1600,1.29,macOS,4.7,227.0,3,0,1,7
+Dell,Inspiron 15,45990,8,512,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,15.6,1920x1080,1.65,Windows,4.1,141.21,2,0,0,6
+Lenovo,IdeaPad Slim 3,38990,8,256,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,14.0,1920x1080,1.4,Windows,4.2,157.35,2,0,1,6
+ASUS,TUF Gaming F15,89990,16,1024,SSD,Intel,Core i7,12,NVIDIA,RTX 3060,Discrete,15.6,1920x1080,2.2,Windows,4.4,141.21,1,1,0,10
+Acer,Swift 3,59990,16,512,SSD,AMD,Ryzen 5,5,AMD,Integrated,Integrated,14.0,1920x1080,1.2,Windows,4.3,157.35,2,0,1,7
+MSI,GF63 Thin,64990,8,512,SSD,Intel,Core i5,11,NVIDIA,GTX 1650,Discrete,15.6,1920x1080,1.86,Windows,4.0,141.21,2,1,0,8
+Samsung,Galaxy Book2,67990,16,512,SSD,Intel,Core i5,12,Intel,Integrated,Integrated,15.6,1920x1080,1.55,Windows,4.2,141.21,1,0,0,8
+HP,Pavilion 14,62990,16,512,SSD,Intel,Core i5,12,Intel,Integrated,Integrated,14.0,1920x1080,1.41,Windows,4.3,157.35,1,0,0,8
+Apple,MacBook Pro,199990,16,512,SSD,Apple,M2 Pro,0,Apple,Integrated,Integrated,14.2,3024x1964,1.6,macOS,4.8,254.0,1,0,0,9
+Dell,Vostro 3420,41990,8,256,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,14.0,1920x1080,1.48,Windows,3.8,157.35,2,0,0,6
+Lenovo,Yoga Slim 7,78990,16,512,SSD,AMD,Ryzen 7,5,AMD,Integrated,Integrated,14.0,1920x1080,1.39,Windows,4.4,157.35,2,0,1,9
+ASUS,Vivobook 15,30990,8,512,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,15.6,1920x1080,1.7,Windows,3.9,141.21,2,0,0,6
+Acer,Aspire Lite,31990,8,512,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,15.6,1920x1080,1.59,Windows,3.7,141.21,2,0,0,6
+MSI,Modern 14,49990,16,512,SSD,Intel,Core i7,11,Intel,Integrated,Integrated,14.0,1920x1080,1.3,Windows,4.0,157.35,2,0,1,10
+HP,15s,35990,8,512,SSD,Intel,Core i3,11,Intel,Integrated,Integrated,15.6,1920x1080,1.69,Windows,4.0,141.21,2,0,0,6
+Apple,MacBook Air,129900,8,512,SSD,Apple,M2,0,Apple,Integrated,Integrated,13.6,2560x1664,1.24,macOS,4.6,224.0,1,0,1,7
+Dell,G15,81990,16,512,SSD,AMD,Ryzen 5,6,NVIDIA,RTX 3050,Discrete,15.6,1920x1080,2.51,Windows,4.1,141.21,1,1,0,7
+Lenovo,IdeaPad Gaming 3,67990,16,512,SSD,AMD,Ryzen 7,5,NVIDIA,RTX 3050,Discrete,15.6,1920x1080,2.25,Windows,4.3,141.21,2,1,0,9
+ASUS,ROG Strix G15,99990,16,1024,SSD,AMD,Ryzen 7,6,NVIDIA,RTX 3060,Discrete,15.6,1920x1080,2.3,Windows,4.5,141.21,1,1,0,9
+Acer,Predator Helios,129990,16,1024,SSD,Intel,Core i9,12,NVIDIA,RTX 3060,Discrete,15.6,1920x1080,2.6,Windows,4.4,141.21,1,1,0,12
