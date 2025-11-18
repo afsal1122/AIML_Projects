@@ -1,26 +1,14 @@
-# File: src/models/train.py
-"""
-Model Training Pipeline.
-
-This script loads the preprocessed data, splits it,
-trains a RandomForest and an XGBoost model, performs
-hyperparameter tuning, evaluates the best model, and saves
-the model and evaluation artifacts.
-
-Run as module:
-python -m src.models.train
-"""
-
 import pandas as pd
 import numpy as np
 from pathlib import Path
+import json
 from typing import List, Any, Optional
 
 from sklearn.model_selection import train_test_split, RandomizedSearchCV
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.compose import ColumnTransformer
 
-from src.utils import get_logger
+from src.utils import get_logger, save_plot
 from src.models.persistence import load_model, save_model
 from src.models.evaluate import (
     get_metrics, plot_pred_vs_actual, 
@@ -45,10 +33,10 @@ logger = get_logger(__name__)
 MODEL_DIR = Path("models")
 BEST_MODEL_PATH = MODEL_DIR / "best_model.pkl"
 EVAL_DIR = MODEL_DIR / "evaluation"
+FEATURE_NAMES_PATH = MODEL_DIR / "feature_names.json" # NEW
 
 # --- Model Configuration ---
-
-# RandomForest
+# Use smaller search space for speed, expand for more accuracy
 RF_PARAM_DIST = {
     'n_estimators': [100, 200, 300],
     'max_depth': [10, 20, 30, None],
@@ -57,7 +45,6 @@ RF_PARAM_DIST = {
     'max_features': ['sqrt', 1.0]
 }
 
-# XGBoost
 XGB_PARAM_DIST = {
     'n_estimators': [100, 300, 500],
     'learning_rate': [0.01, 0.05, 0.1],
@@ -93,27 +80,27 @@ def load_data(
     logger.info(f"Loaded {len(df)} records and preprocessing pipeline.")
     return df, pipeline
 
-def get_feature_names(pipeline: ColumnTransformer) -> List[str]:
+def get_feature_names_from_pipeline(pipeline: ColumnTransformer) -> List[str]:
     """Extracts feature names from a fitted ColumnTransformer."""
     feature_names = []
     
-    # Numeric features
-    feature_names.extend(NUMERIC_FEATURES)
-    
-    # Categorical features
     try:
-        ohe_categories = pipeline.named_transformers_['cat']\
-                                 .named_steps['onehot']\
-                                 .categories_
-        for i, col in enumerate(CATEGORICAL_FEATURES):
-            feature_names.extend([f"{col}_{cat}" for cat in ohe_categories[i]])
-    except Exception as e:
-        logger.warning(f"Could not extract OHE names, using defaults: {e}")
-        feature_names.extend(CATEGORICAL_FEATURES)
+        # Numeric features
+        feature_names.extend(NUMERIC_FEATURES)
+        
+        # Categorical features
+        ohe = pipeline.named_transformers_['cat'].named_steps['onehot']
+        ohe_feature_names = ohe.get_feature_names_out(CATEGORICAL_FEATURES)
+        feature_names.extend(ohe_feature_names)
 
-    # Binary features
-    feature_names.extend(BINARY_FEATURES)
-    
+        # Binary features
+        feature_names.extend(BINARY_FEATURES)
+        
+    except Exception as e:
+        logger.error(f"Error getting feature names: {e}")
+        logger.warning("Falling back to raw feature lists. SHAP plots may be incorrect.")
+        feature_names = NUMERIC_FEATURES + CATEGORICAL_FEATURES + BINARY_FEATURES
+
     return feature_names
 
 def tune_model(
@@ -127,8 +114,8 @@ def tune_model(
     random_search = RandomizedSearchCV(
         estimator=model,
         param_distributions=param_dist,
-        n_iter=10,  # Keep low for speed
-        cv=3,
+        n_iter=10,  # Increase for better accuracy, 10 is fast
+        cv=3,       # 3-fold cross-validation
         verbose=1,
         random_state=42,
         n_jobs=-1,
@@ -153,11 +140,11 @@ def main():
     # Log-transform the target variable to handle skewness
     df[TARGET_FEATURE] = np.log1p(df[TARGET_FEATURE])
     
-    X = df.drop(columns=[TARGET_FEATURE])
+    feature_cols = NUMERIC_FEATURES + CATEGORICAL_FEATURES + BINARY_FEATURES
+    X = df[feature_cols].copy()
     y = df[TARGET_FEATURE]
 
     # 3. Split Data (Train/Validation/Test)
-    # 70% Train, 15% Validation, 15% Test
     X_train_full, X_test, y_train_full, y_test = train_test_split(
         X, y, test_size=0.15, random_state=42
     )
@@ -173,10 +160,13 @@ def main():
     X_val_processed = pipeline.transform(X_val)
     X_test_processed = pipeline.transform(X_test)
     
-    # Get feature names after transformation
-    feature_names = get_feature_names(pipeline)
+    # 5. Get and Save Feature Names (for SHAP)
+    feature_names = get_feature_names_from_pipeline(pipeline)
+    with open(FEATURE_NAMES_PATH, 'w') as f:
+        json.dump(feature_names, f)
+    logger.info(f"Saved {len(feature_names)} feature names to {FEATURE_NAMES_PATH}")
     
-    # 5. Train Models
+    # 6. Train Models
     models_to_train = {
         "RandomForest": (
             RandomForestRegressor(random_state=42, n_jobs=-1),
@@ -191,7 +181,6 @@ def main():
         )
     else:
         logger.warning("XGBoost not found. Skipping XGBoost training.")
-        logger.warning("To install: pip install xgboost")
 
     best_model = None
     best_score = np.inf
@@ -199,25 +188,20 @@ def main():
 
     for name, (model, params) in models_to_train.items():
         logger.info(f"--- Training {name} ---")
-        # Tuned model
-        # best_estimator = tune_model(model, params, X_train_processed, y_train)
-        
-        # For speed, we'll just fit the default model
-        # Uncomment tune_model above for hyperparameter search
-        logger.warning(f"Skipping hyperparameter tuning for {name} for speed.")
-        best_estimator = model.fit(X_train_processed, y_train)
+        best_estimator = tune_model(model, params, X_train_processed, y_train)
 
         # Evaluate on validation set
         y_val_pred = best_estimator.predict(X_val_processed)
-        metrics = get_metrics(np.expm1(y_val), np.expm1(y_val_pred))
+        # Evaluate on log-scale (RMSE)
+        metrics = get_metrics(y_val, y_val_pred)
         trained_models[name] = best_estimator
         
         if metrics['rmse'] < best_score:
             best_score = metrics['rmse']
             best_model = best_estimator
-            logger.info(f"New best model: {name} (RMSE: {best_score:.2f})")
+            logger.info(f"New best model: {name} (RMSE on log-scale: {best_score:.4f})")
 
-    # 6. Evaluate Best Model on Test Set
+    # 7. Evaluate Best Model on Test Set
     if best_model is None:
         logger.error("No models were trained successfully.")
         return
@@ -232,19 +216,19 @@ def main():
     test_metrics = get_metrics(y_test_orig, y_test_pred_orig)
     logger.info(f"Test Metrics (Original Scale): {test_metrics}")
 
-    # 7. Save Artifacts
+    # 8. Save Artifacts
     logger.info("Saving best model and evaluation plots...")
     save_model(best_model, BEST_MODEL_PATH)
     
     # Save plots
     fig_pred = plot_pred_vs_actual(y_test_orig, y_test_pred_orig, title="Test Set: Predicted vs. Actual")
-    fig_pred.savefig(EVAL_DIR / "test_predicted_vs_actual.png")
+    save_plot(fig_pred, EVAL_DIR / "test_predicted_vs_actual.png")
     
     fig_res = plot_residuals(y_test_orig, y_test_pred_orig, title="Test Set: Residuals Plot")
-    fig_res.savefig(EVAL_DIR / "test_residuals_plot.png")
+    save_plot(fig_res, EVAL_DIR / "test_residuals_plot.png")
     
     fig_imp = plot_feature_importance(best_model, feature_names, best_model.__class__.__name__)
-    fig_imp.savefig(EVAL_DIR / "feature_importance.png")
+    save_plot(fig_imp, EVAL_DIR / "feature_importance.png")
     
     logger.info("Training pipeline finished successfully.")
 
