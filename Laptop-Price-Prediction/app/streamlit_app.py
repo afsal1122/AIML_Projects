@@ -1,126 +1,360 @@
 import streamlit as st
-from app_utils import load_artifacts
+import textwrap   
+from app.app_utils import load_artifacts
 
-# --- CHANGED APP NAME ---
-st.set_page_config(page_title="Laptop Genius", page_icon="💻", layout="wide")
+st.set_page_config(
+    page_title="Laptop Price Intelligence", 
+    page_icon="💻", 
+    layout="wide"
+)
 
-st.title("💻 Laptop Genius")
-st.markdown("### Intelligent Laptop Price Discovery & Recommendations")
-st.info("Navigate using the sidebar to access the **Pro Price Estimator**, **Smart Recommender**, and **Market Analytics**.")
-
-# Custom CSS for Card Styling
+# -----------------------------
+# CSS Styling (Updated for Dark Dashboard Theme)
+# -----------------------------
 st.markdown("""
 <style>
-    .laptop-card {
-        background-color: #ffffff;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #e0e0e0;
-        box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-        height: 100%;
+    /* Global Background */
+    .stApp {
+        background-color: #0f1116;
+        color: white;
     }
-    .card-title {
-        font-size: 18px;
-        font-weight: bold;
-        color: #333;
-        margin-bottom: 5px;
-        white-space: nowrap; 
+
+    /* Main Header Styling */
+    .main-header {
+        font-size: 2.5rem;
+        color: #FFFFFF;
+        text-align: left;
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+    
+    /* Metric Card Styling (To match the colored boxes) */
+    .metric-card {
+        background-color: #1c1e26;
+        border-radius: 12px;
+        padding: 15px;
+        border: 1px solid #2d303e;
+        position: relative;
+    }
+    .metric-card h4 {
+        font-size: 0.9rem;
+        color: #a0a0a0;
+        margin: 0;
+        font-weight: 400;
+    }
+    .metric-card p {
+        font-size: 1.8rem;
+        color: #ffffff;
+        margin: 5px 0 0 0;
+        font-weight: 700;
+    }
+    /* Colored borders for metrics */
+    .border-blue { border-left: 4px solid #3498db; }
+    .border-orange { border-left: 4px solid #e67e22; }
+    .border-purple { border-left: 4px solid #9b59b6; }
+    .border-green { border-left: 4px solid #2ecc71; }
+
+    /* Filter Section Styling */
+    .filter-container {
+        background-color: #1c1e26;
+        padding: 20px;
+        border-radius: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #2d303e;
+    }
+
+    /* Result Card Styling (Dark Theme) */
+    .recommendation-card {
+        background: #232631; /* Dark Grey/Blue */
+        padding: 1.2rem;
+        border-radius: 16px;
+        margin-bottom: 1rem;
+        border: 1px solid #343846;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        height: 100%;
+        color: white;
+    }
+    
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        border-bottom: 1px solid #343846;
+        padding-bottom: 0.8rem;
+    }
+    
+    .brand-title {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #ffffff;
+    }
+    
+    /* Specs Grid */
+    .specs-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+        margin-bottom: 1.2rem;
+    }
+    
+    .spec-box {
+        background-color: #181a20;
+        padding: 8px;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .spec-label {
+        font-size: 0.7rem;
+        color: #8b92a5;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+        display: flex;
+        align-items: center;
+        gap: 5px;
+    }
+    
+    .spec-value {
+        font-size: 0.9rem;
+        color: #e1e1e1;
+        font-weight: 500;
+        white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
     }
-    .card-price {
-        font-size: 22px;
-        font-weight: bold;
-        color: #2E7D32;
-        margin-bottom: 10px;
+
+    /* Footer Buttons */
+    .card-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-top: 10px;
     }
-    .card-specs {
-        font-size: 14px;
-        color: #666;
-        margin-bottom: 5px;
+    
+    .price-btn {
+        background-color: #00c853;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 1.1rem;
     }
-    .card-score {
-        font-size: 12px;
-        background-color: #e3f2fd;
-        color: #1565c0;
-        padding: 4px 8px;
-        border-radius: 12px;
-        display: inline-block;
-        font-weight: bold;
+    
+    .match-btn {
+        background-color: #ff9100; /* Orange */
+        color: #212121;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-weight: 600;
     }
+
+    /* Customizing Streamlit Widgets */
+    .stSelectbox label, .stSlider label, .stMultiSelect label {
+        color: #e1e1e1 !important;
+    }
+    
+    /* Green primary button */
+    div.stButton > button[kind="primary"] {
+        background-color: #27ae60 !important;
+        border-color: #27ae60 !important;
+        color: white !important;
+        height: 3rem; 
+        margin-top: 1.8rem; /* Align with inputs */
+    }
+    
 </style>
 """, unsafe_allow_html=True)
 
-df, _, _, _, rec = load_artifacts()
+# Load artifacts
+with st.spinner("Loading laptop intelligence system..."):
+    df, pipeline, model, feature_names, recommender = load_artifacts()
 
 if df is None:
-    st.error("System not initialized. Please run: python -m src.data.preprocess && python -m src.models.train")
+    st.error("🚫 Unable to load dataset.")
     st.stop()
 
-# --- Quick Dashboard ---
-with st.container(border=True):
-    st.header("⚡ Quick Recommender")
-    st.caption("Get instant recommendations based on your budget.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        min_p = int(df['price'].min())
-        max_p = int(df['price'].max())
-        budget = st.slider("Your Budget (₹)", min_p, max_p, (40000, 100000), step=1000)
-        
-    with col2:
-        usage = st.multiselect("What will you use it for?", ["gaming", "programming", "lightweight", "content-creation"])
-        must = st.multiselect("Must Haves", ["Dedicated GPU", "SSD"])
+# -----------------------------
+# Header Section
+# -----------------------------
+st.markdown('<div class="main-header">💻 Laptop Price Intelligence Platform</div>', unsafe_allow_html=True)
 
-    find_btn = st.button("Find Matches", type="primary", use_container_width=True)
+# -----------------------------
+# Metrics Section (Custom HTML to match visual structure)
+# -----------------------------
+st.markdown("#### 📊 Dataset Overview")
+col1, col2, col3, col4 = st.columns(4)
 
-    if find_btn:
-        recs = rec.recommend(budget[0], budget[1], usage, must, top_k=6) # Get 6 for a nice grid
-        
-        if not recs.empty:
-            st.subheader(f"Found {len(recs)} Perfect Matches")
-            st.markdown("---")
+with col1:
+    st.markdown(f"""
+    <div class="metric-card border-blue">
+        <h4>Total Laptops</h4>
+        <p>{len(df)}</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown(f"""
+    <div class="metric-card border-orange">
+        <h4>Unique Brands</h4>
+        <p>{df["Brand"].nunique()}</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col3:
+    st.markdown(f"""
+    <div class="metric-card border-purple">
+        <h4>Avg Price</h4>
+        <p>₹{int(df['Price'].mean()):,}</p>
+    </div>
+    """, unsafe_allow_html=True)
+with col4:
+    status = "Ready" if model else "Training"
+    icon = "✅" if model else "❌"
+    st.markdown(f"""
+    <div class="metric-card border-green">
+        <h4>AI Model</h4>
+        <p>{icon} {status}</p>
+    </div>
+    """, unsafe_allow_html=True)
 
-            # Create a grid layout (3 columns wide)
-            cols = st.columns(3)
-            
-            for idx, row in recs.iterrows():
-                # Cycle through columns (0, 1, 2, 0, 1, 2...)
-                with cols[idx % 3]:
-                    with st.container(border=True):
-                        # Rank Badge
-                        st.markdown(f"**Rank #{row['Rank']}**")
-                        
-                        # Title (Truncated if too long)
-                        model_name = f"{row['brand']} {row['model']}"
-                        st.markdown(f"### {row['brand']}")
-                        st.caption(row['model'])
-                        
-                        # Price
-                        st.markdown(f"## ₹{row['price']:,.0f}")
-                        
-                        # Specs
-                        st.markdown(f"**CPU:** {row['cpu_series']}")
-                        st.markdown(f"**RAM:** {row['ram_gb']} GB")
-                        
-                        # Progress Bar for Match Score
-                        score_val = row['Score']
-                        # Normalize score visually for the progress bar (assuming max score around 15-20)
-                        norm_score = min(1.0, score_val / 15.0) 
-                        st.progress(norm_score, text=f"Match Score: {score_val:.1f}")
-                        
-                        # Link Button
-                        st.link_button("🔍 Search on Google", row['url'], use_container_width=True)
-        else:
-            st.warning("No laptops found in this range. Try increasing your budget.")
+st.markdown("<br>", unsafe_allow_html=True)
 
-st.divider()
-st.markdown("#### 📈 Market Snapshot")
-col_a, col_b, col_c = st.columns(3)
-col_a.metric("Laptops in Database", len(df))
-col_a.metric("Average Market Price", f"₹{int(df['price'].mean()):,}")
-col_b.metric("Most Common Brand", df['brand'].mode()[0])
-col_b.metric("Most Common CPU", df['cpu_series'].mode()[0])
-col_c.metric("Most Common GPU", df['gpu_model'].mode()[0])
-col_c.metric("Most Common RAM", f"{int(df['ram_gb'].mode()[0])} GB")
+# -----------------------------
+# Smart Recommender Filter Section
+# -----------------------------
+st.markdown('### 🎯 Smart Recommender')
+st.markdown('<div class="filter-container">', unsafe_allow_html=True)
+
+# Layout based on reference: Brand | Usage | Min Slider | Max Slider
+col1, col2, col3, col4 = st.columns([1, 1.2, 1, 1])
+
+with col1:
+    all_brands = ["All Brands"] + sorted(df['Brand'].unique().tolist())
+    selected_brand = st.selectbox("Select Brand", all_brands)
+
+with col2:
+    usage_type = st.selectbox(
+        "Primary Usage",
+        ["gaming", "programming", "content-creation", "lightweight", "general"],
+        format_func=lambda x: {
+            "gaming": "🎮 Gaming & Entertainment",
+            "programming": "💻 Programming & Dev", 
+            "content-creation": "🎨 Content Creation",
+            "lightweight": "📱 Lightweight",
+            "general": "⚡ General Purpose"
+        }[x]
+    )
+
+with col3:
+    data_min_price = int(df['Price'].min())
+    data_max_price = int(df['Price'].max())
+    min_price = st.slider("Minimum Budget (₹)", data_min_price, data_max_price, max(30000, data_min_price), 5000)
+
+with col4:
+    max_price = st.slider("Maximum Budget (₹)", data_min_price, data_max_price, min(120000, data_max_price), 5000)
+
+# Secondary row for extras and the button
+col_feat, col_btn = st.columns([3, 1])
+
+with col_feat:
+    must_haves = st.multiselect(
+        "Must Have Features (Optional)",
+        ["SSD", "Dedicated GPU", "High RAM (16GB+)", "Latest Processor"]
+    )
+    # Hidden top_k logic maintained but not prominent to match clean UI
+    top_k = 8 
+
+with col_btn:
+    # Button aligned to right
+    recommend_clicked = st.button("🎯 Find Smart Recommendations", type="primary", use_container_width=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
+
+if min_price >= max_price:
+    st.warning("⚠️ Maximum budget should be higher than minimum budget")
+
+# -----------------------------
+# Recommendation Logic & Results
+# -----------------------------
+if "recommendation_results" not in st.session_state:
+    st.session_state["recommendation_results"] = None
+
+results = st.session_state["recommendation_results"]
+
+if recommend_clicked:
+    if recommender is None:
+        st.error("❌ Recommender system not available")
+    else:
+        with st.spinner("Finding best matches..."):
+            results = recommender.recommend_with_brand(min_price, max_price, [usage_type], must_haves, selected_brand, top_k)
+        st.session_state["recommendation_results"] = results
+        results = st.session_state["recommendation_results"]
+
+if results is not None:
+    if results.empty:
+        clear = st.button("🧹 Clear Output", type="secondary")
+        if clear:
+            st.session_state["recommendation_results"] = None
+            st.rerun()
+        st.markdown("""<h3 style="color: #7f8c8d; text-align:center;">🤔 No Perfect Matches Found</h3>""", unsafe_allow_html=True)
+    else:
+        # Clear button at top of results
+        col_res_header, col_res_clear = st.columns([4,1])
+        with col_res_clear:
+            clear = st.button("🧹 Clear Output", type="secondary", use_container_width=True)
+            if clear:
+                st.session_state["recommendation_results"] = None
+                st.rerun()
+
+        # Grid Display
+        cols = st.columns(2)
+        for idx, (_, laptop) in enumerate(results.iterrows()):
+            with cols[idx % 2]:
+                score_percent = int(laptop['Score'] * 100) if 'Score' in laptop else 0
+                processor = str(laptop.get('Processor_name', 'N/A')).replace('_', ' ').title()
+                ram = laptop.get('RAM_GB', 'N/A')
+                storage = laptop.get('Storage_capacity_GB', 'N/A')
+                graphics = str(laptop.get('Graphics_name', 'Integrated')).replace('_', ' ').title()
+                price = laptop.get('Price', 0)
+                brand = laptop.get('Brand', 'Unknown')
+                
+                # HTML Card Construction
+                card_html = f"""
+                <div class="recommendation-card">
+                    <div class="card-header">
+                        <span class="brand-title">{brand}</span>
+                        <div style="background: #374151; padding: 2px 8px; border-radius: 4px; font-size: 0.8rem;">
+                            Laptop
+                        </div>
+                    </div>
+                    
+                    <div class="specs-grid">
+                        <div class="spec-box">
+                            <span class="spec-label">🖥️ Processor</span>
+                            <span class="spec-value">{processor}</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-label">💾 RAM</span>
+                            <span class="spec-value">{ram} GB</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-label">💿 Storage</span>
+                            <span class="spec-value">{storage} GB</span>
+                        </div>
+                        <div class="spec-box">
+                            <span class="spec-label">🎮 Graphics</span>
+                            <span class="spec-value">{graphics}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer">
+                        <div class="price-btn">₹ {price:,.0f}</div>
+                        <div class="match-btn">Match: {score_percent}%</div>
+                    </div>
+                </div>
+                """
+                st.markdown(card_html.replace('\n', ''), unsafe_allow_html=True)

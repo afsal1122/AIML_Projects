@@ -1,47 +1,52 @@
+# src/utils.py
+import os
 import logging
-import sys
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+from pathlib import Path
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
-    logger = logging.getLogger(name)
-    logger.setLevel(level)
-    if not logger.handlers:
-        handler = logging.StreamHandler(sys.stdout)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-    logger.propagate = False
-    return logger
+# Define Project Root
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
-def save_plot(fig: plt.Figure, path: str):
-    try:
-        fig.savefig(path, bbox_inches='tight', dpi=150)
-    except Exception:
-        pass
+# Paths
+DATA_RAW_DIR = os.path.join(ROOT_DIR, "data", "raw")
+DATA_PROCESSED_DIR = os.path.join(ROOT_DIR, "data", "processed")
+MODELS_DIR = os.path.join(ROOT_DIR, "models")
 
-def plot_brand_distribution(df: pd.DataFrame) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.countplot(y='brand', data=df, order=df['brand'].value_counts().index, ax=ax, palette='viridis')
-    ax.set_title('Laptop Count by Brand')
-    return fig
+RAW_DATA_PATH = os.path.join(DATA_RAW_DIR, "training_dataset.csv")
+CLEAN_DATA_PATH = os.path.join(DATA_PROCESSED_DIR, "laptops_cleaned.csv")
+PIPELINE_PATH = os.path.join(MODELS_DIR, "preprocessing_pipeline.pkl")
+MODEL_PATH = os.path.join(MODELS_DIR, "best_model.pkl")
+FEATURE_NAMES_PATH = os.path.join(MODELS_DIR, "feature_names.json")
 
-def plot_avg_price_by_brand(df: pd.DataFrame) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    avg_price = df.groupby('brand')['price'].mean().sort_values(ascending=False)
-    sns.barplot(y=avg_price.index, x=avg_price.values, ax=ax, palette='coolwarm')
-    ax.set_title('Average Price by Brand')
-    return fig
+# Feature Definitions (Updated)
+NUMERIC_FEATURES = [
+    "Processor_gen_num",
+    "Core_per_processor", 
+    "Threads",
+    "RAM_GB",
+    "Storage_capacity_GB",
+    "Graphics_GB",
+    "Display_size_inches",
+    "Horizontal_pixel",
+    "Vertical_pixel",
+    "ppi",
+]
 
-def plot_correlation_heatmap(df: pd.DataFrame, numeric_cols: list) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(10, 8))
-    corr = df[numeric_cols].corr()
-    sns.heatmap(corr, annot=True, fmt='.2f', cmap='coolwarm', ax=ax)
-    return fig
+CATEGORICAL_FEATURES = [
+    "Brand",
+    "Processor_brand",
+    "Processor_name", 
+    "Processor_variant",
+    "Storage_type",
+    "Graphics_name",
+    "Graphics_brand",
+    "Operating_system",
+]
 
-def plot_ram_vs_price_scatter(df: pd.DataFrame) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(10, 6))
-    sns.scatterplot(x='ram_gb', y='price', hue='brand', data=df, alpha=0.6, ax=ax)
-    ax.set_title('Price vs. RAM')
-    return fig
+def get_logger(name):
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    return logging.getLogger(name)
+
+def ensure_directories():
+    os.makedirs(DATA_RAW_DIR, exist_ok=True)
+    os.makedirs(DATA_PROCESSED_DIR, exist_ok=True)
+    os.makedirs(MODELS_DIR, exist_ok=True)

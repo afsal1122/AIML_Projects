@@ -1,58 +1,88 @@
+# src/data/features.py
+import pandas as pd
 import re
 import numpy as np
-import pandas as pd
-from typing import Tuple, Optional
 
-def parse_price(price_str: str) -> Optional[float]:
-    if not isinstance(price_str, str): return None
-    # Remove currency symbols and commas
-    cleaned = re.sub(r"[^\d.]", "", str(price_str))
-    try: return float(cleaned)
-    except: return None
-
-def parse_ram(ram_val) -> Optional[int]:
-    if isinstance(ram_val, (int, float)): return int(ram_val)
-    if not isinstance(ram_val, str): return None
-    match = re.search(r'(\d+)', ram_val)
-    return int(match.group(1)) if match else None
-
-def parse_weight(w) -> Optional[float]:
-    if isinstance(w, (int, float)): return float(w)
-    if not isinstance(w, str): return None
-    # Handle "1.5 kg" or "1500 g"
-    match = re.search(r'(\d+(\.\d+)?)', w)
-    return float(match.group(1)) if match else None
-
-def parse_os(os_str) -> str:
-    s = str(os_str).lower()
-    if 'windows' in s: return 'Windows'
-    if 'mac' in s: return 'macOS'
-    if 'linux' in s or 'ubuntu' in s: return 'Linux'
-    return 'Other'
-
-def create_heuristic_features(row: pd.Series) -> pd.Series:
-    # Gaming Heuristic
-    row['is_gaming'] = 0
-    gpu_t = str(row.get('gpu_type', '')).lower()
-    gpu_b = str(row.get('gpu_brand', '')).lower()
-    gpu_m = str(row.get('gpu_model', '')).lower()
-    
-    if 'discrete' in gpu_t or 'nvidia' in gpu_b or 'rtx' in gpu_m or 'gtx' in gpu_m:
-        row['is_gaming'] = 1
+def clean_processor_gen(val):
+    """
+    Robustly parses 'Processor_gen' into consistent numeric scale.
+    Apple M-series: M1 -> 101, M2 -> 102, etc.
+    Intel/AMD: Extract generation number
+    """
+    if pd.isna(val): 
+        return np.nan
         
-    # Ultrabook Heuristic
-    row['is_ultrabook'] = 0
-    w = row.get('weight_kg', 2.0)
-    if w <= 1.5 and 'ssd' in str(row.get('storage_type','')).lower():
-        row['is_ultrabook'] = 1
-    return row
+    val_str = str(val).strip()
+    
+    # Apple Silicon Mapping (100+ scheme)
+    apple_match = re.search(r'M\s*(\d+)', val_str, re.IGNORECASE)
+    if apple_match:
+        try:
+            return 100 + int(apple_match.group(1))  # M1=101, M2=102, etc.
+        except:
+            pass
+    
+    # Intel Special mappings
+    if 'Meteor Lake' in val_str or 'Ultra' in val_str:
+        return 14
+    
+    # Standard generation patterns
+    match = re.search(r'(\d+)(?:th|nd|rd|st)?\s*Gen', val_str, re.IGNORECASE)
+    if match: 
+        return int(match.group(1))
+    
+    match_gen_x = re.search(r'Gen\s*(\d+)', val_str, re.IGNORECASE)
+    if match_gen_x: 
+        return int(match_gen_x.group(1))
 
-def calculate_cpu_score(row: pd.Series) -> int:
-    score = 0
-    series = str(row.get('cpu_series', '')).lower()
-    if 'i9' in series or 'ryzen 9' in series or 'm2 max' in series: score = 10
-    elif 'i7' in series or 'ryzen 7' in series or 'm2 pro' in series: score = 8
-    elif 'i5' in series or 'ryzen 5' in series or 'm2' in series: score = 6
-    elif 'i3' in series or 'ryzen 3' in series: score = 4
-    else: score = 2
-    return score
+    # Try to extract any digits
+    digits = re.findall(r'\d+', val_str)
+    if digits:
+        try:
+            return int(digits[0])
+        except:
+            pass
+
+    return np.nan
+
+def clean_memory(val):
+    """Extracts numeric RAM value (e.g., '16GB' -> 16)."""
+    if pd.isna(val): 
+        return np.nan
+    nums = re.findall(r'\d+', str(val))
+    return int(nums[0]) if nums else np.nan
+
+def clean_storage(val):
+    """Extracts storage in GB."""
+    if pd.isna(val): 
+        return np.nan
+    val_str = str(val).lower()
+    nums = re.findall(r'\d+', val_str)
+    if not nums: 
+        return np.nan
+    amount = int(nums[0])
+    if 'tb' in val_str: 
+        amount *= 1024
+    return amount
+
+def clean_display(val):
+    """Extracts display size."""
+    if pd.isna(val): 
+        return np.nan
+    try:
+        return float(val)
+    except:
+        nums = re.findall(r'\d+\.?\d*', str(val))
+        return float(nums[0]) if nums else np.nan
+
+def extract_vram(gpu_name):
+    """Extract VRAM from GPU name."""
+    if pd.isna(gpu_name):
+        return np.nan
+    try:
+        match = re.search(r'(\d+)\s*GB', str(gpu_name), re.IGNORECASE)
+        if match:
+            return int(match.group(1))
+    except:
+        pass
+    return np.nan

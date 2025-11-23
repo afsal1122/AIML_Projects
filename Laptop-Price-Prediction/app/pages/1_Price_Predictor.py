@@ -1,198 +1,312 @@
+# app/pages/1_Price_Predictor.py
 import streamlit as st
 import pandas as pd
 import numpy as np
-import shap
-import matplotlib.pyplot as plt
+import math
+import time
+import sys
+from pathlib import Path
 
-from app.app_utils import load_artifacts
-from src.data.preprocess import NUMERIC_FEATURES, CATEGORICAL_FEATURES, BINARY_FEATURES
+sys.path.append(str(Path(__file__).resolve().parents[2]))
+from app.app_utils import load_artifacts, get_smart_defaults
 
-st.set_page_config(page_title="Pro Price Estimator", page_icon="💲", layout="wide")
+st.set_page_config(
+    page_title="AI Price Predictor", 
+    page_icon="💲", 
+    layout="wide"
+)
 
-# Load all saved artifacts
-df, pipeline, model, feature_names, _ = load_artifacts()
-
-st.title("💲 Pro Laptop Price Estimator")
-st.markdown("Configure detailed specs to get an accurate market price estimation.")
-
-# -----------------------------
-# Helper: Get unique dropdown options
-# -----------------------------
-def _opts_from(df_local, col):
-    if col not in df_local.columns:
-        return []
-    vals = df_local[col].dropna().astype(str).unique()
-    vals = [v for v in vals if v.strip() != ""]
-    return sorted(vals)
-
-
-# -----------------------------
-# UI FORM
-# -----------------------------
-with st.form("predict_form"):
-    st.subheader("1. Core Specs")
-    col1, col2, col3 = st.columns(3)
-
-    # -------- Brand --------
-    with col1:
-        brand_options = _opts_from(df, "brand")
-        brand = st.selectbox("Brand", brand_options)
-        df_brand = df[df["brand"].astype(str) == str(brand)]
-
-    # -------- CPU Brand (Brand Filter Only) --------
-    with col2:
-        cpu_brand_options = _opts_from(df_brand, "cpu_brand")
-        if not cpu_brand_options:
-            cpu_brand_options = _opts_from(df, "cpu_brand")
-        cpu_brand = st.selectbox("Processor Brand", cpu_brand_options)
-
-    # -------- CPU Series (Brand Filter Only) --------
-    with col3:
-        series_options = _opts_from(df_brand, "cpu_series")
-        if not series_options:
-            series_options = _opts_from(df, "cpu_series")
-        series = st.selectbox("Processor Series", series_options)
-
-    # -------- CPU Gen + Variant (Brand Filter Only) --------
-    col4, col5 = st.columns(2)
-
-    with col4:
-        if "cpu_gen" in df.columns:
-            gen_options = _opts_from(df_brand, "cpu_gen")
-            if not gen_options:
-                gen_options = ["Standard"]
-            cpu_gen = st.selectbox("Processor Generation", gen_options)
-        else:
-            cpu_gen = "Standard"
-
-    with col5:
-        if "cpu_variant" in df.columns:
-            variant_options = _opts_from(df_brand, "cpu_variant")
-            if not variant_options:
-                variant_options = ["Standard"]
-            cpu_variant = st.selectbox("Processor Variant", variant_options)
-        else:
-            cpu_variant = "Standard"
-
-    st.divider()
-    st.subheader("2. Graphics & Memory")
-
-    col6, col7, col8 = st.columns(3)
-
-    # -------- GPU (Brand Filter Only) --------
-    with col6:
-        gpu_options = _opts_from(df_brand, "gpu_model")
-        if not gpu_options:
-            gpu_options = _opts_from(df, "gpu_model")
-        if not gpu_options:
-            gpu_options = ["Unknown GPU"]
-        gpu_model = st.selectbox("Graphics Card (GPU Model)", gpu_options)
-
-    # -------- RAM (Global) --------
-    with col7:
-        ram_options = sorted(list(set(df["ram_gb"].dropna().astype(int).tolist())))
-        default_ram = 16 if 16 in ram_options else ram_options[0]
-        ram = st.select_slider("RAM (GB)", options=ram_options, value=default_ram)
-
-    # -------- Storage (Global) --------
-    with col8:
-        storage_options = [128, 256, 512, 1024, 2048, 4096]
-        storage = st.select_slider("Storage (GB)", options=storage_options, value=512)
-
-    st.divider()
-    st.subheader("3. Other Details")
-
-    col9, col10 = st.columns(2)
-
-    # -------- OS (Brand Filter Only) --------
-    with col9:
-        os_options = _opts_from(df_brand, "os_category")
-        if not os_options:
-            os_options = ["Other"]
-        os_type = st.selectbox("Operating System", os_options)
-
-    # -------- Screen Size (Brand Filter Only) --------
-    with col10:
-        screen_options = sorted(list(set(df_brand["display_size_in"].dropna().astype(float).tolist())))
-        if not screen_options:
-            screen_options = [15.6]
-        screen_size = st.selectbox("Screen Size (Inches)", screen_options)
-
-    # -------- Storage Type (Brand Lookup) --------
-    storage_type_opts = _opts_from(df_brand, "storage_type")
-    storage_type = storage_type_opts[0] if storage_type_opts else "SSD"
-
-    submitted = st.form_submit_button("Predict Price", type="primary", use_container_width=True)
-
-# -----------------------------
-# Prediction Logic
-# -----------------------------
-if submitted:
-    # Get GPU brand/type from dataset
-    gpu_row = df[df["gpu_model"] == gpu_model]
-    if not gpu_row.empty:
-        gpu_brand_val = gpu_row.iloc[0]["gpu_brand"]
-        gpu_type_val = gpu_row.iloc[0]["gpu_type"]
-    else:
-        gpu_brand_val = "NVIDIA" if "RTX" in gpu_model else "Intel"
-        gpu_type_val = "Discrete" if "RTX" in gpu_model else "Integrated"
-
-    # Build model input
-    data = {
-        "brand": brand,
-        "cpu_brand": cpu_brand,
-        "cpu_series": series,
-        "cpu_gen": cpu_gen,
-        "cpu_variant": cpu_variant,
-        "ram_gb": ram,
-        "storage_gb": storage,
-        "storage_type": storage_type,
-        "gpu_brand": gpu_brand_val,
-        "gpu_model": gpu_model,
-        "gpu_type": gpu_type_val,
-        "os_category": os_type,
-        "display_size_in": screen_size,
-
-        # Defaults
-        "weight_kg": 1.8,
-        "ppi": 141,
-        "age_years": 1,
-        "user_rating": 4.5,
-        "cpu_score": 5,
-        "is_gaming": 0,
-        "is_ultrabook": 0,
+# Custom CSS
+st.markdown("""
+<style>
+    .prediction-result {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 2rem;
+        border-radius: 15px;
+        color: white;
+        text-align: center;
+        margin: 2rem 0;
     }
+    .feature-section {
+        background-color: #f8f9fa;
+        padding: 1.5rem;
+        border-radius: 10px;
+        margin-bottom: 1rem;
+        border-left: 4px solid #007bff;
+    }
+</style>
+""", unsafe_allow_html=True)
 
-    input_df = pd.DataFrame([data])
+st.title("🎯 AI Laptop Price Predictor")
+st.markdown("Get accurate price predictions using machine learning")
 
-    # Keep only valid columns
-    valid_cols = [c for c in input_df.columns if c in NUMERIC_FEATURES + CATEGORICAL_FEATURES + BINARY_FEATURES]
-    X_pred = input_df[valid_cols]
+# Load artifacts
+df, pipeline, model, feature_names, recommender = load_artifacts()
 
-    try:
-        with st.spinner("Calculating market value..."):
-            X_proc = pipeline.transform(X_pred)
-            log_pred = model.predict(X_proc)
-            price = np.expm1(log_pred)[0]
+if df is None:
+    st.error("❌ Dataset not available. Please check the setup.")
+    st.stop()
 
-            st.success(f"### 💎 Estimated Price: ₹ {price:,.0f}")
+# Prepare data
+work_df = df.copy()
+for col in work_df.columns:
+    if work_df[col].dtype == 'object':
+        work_df[col] = work_df[col].astype(str).str.strip()
 
-            if st.checkbox("Show Prediction Details"):
-                explainer = shap.TreeExplainer(model)
-                shap_values = explainer.shap_values(X_proc)
-                base_val = explainer.expected_value
-                if isinstance(base_val, (list, np.ndarray)):
-                    base_val = base_val[0]
+# Processor generation parsing (consistent with preprocessing)
+def parse_proc_gen(gen):
+    if pd.isna(gen):
+        return np.nan
+    s = str(gen).strip().lower()
+    
+    # Apple M-series
+    if s.startswith("m"):
+        digits = ''.join(filter(str.isdigit, s))
+        if digits:
+            return 100 + int(digits)
+        return np.nan
+    
+    # Intel/AMD generations
+    digits = ''.join(filter(str.isdigit, s))
+    if digits:
+        return int(digits)
+    
+    # Special cases
+    if "meteor" in s or "ultra" in s:
+        return 14
+        
+    return np.nan
 
-                st.pyplot(
-                    shap.force_plot(
-                        base_val,
-                        shap_values[0],
-                        X_pred,
-                        feature_names=feature_names,
-                        matplotlib=True,
-                    )
-                )
+# Build intelligent options
+st.markdown("### 🔧 Laptop Configuration")
 
-    except Exception as e:
-        st.error(f"Prediction failed: {e}")
+# Brand Selection
+col1, col2 = st.columns(2)
+with col1:
+    brands = sorted(work_df['Brand'].dropna().unique())
+    selected_brand = st.selectbox("Laptop Brand", brands, key="brand")
+
+# Processor Selection
+with col2:
+    proc_brands = sorted(work_df[work_df['Brand'] == selected_brand]['Processor_brand'].dropna().unique())
+    if not proc_brands:
+        proc_brands = sorted(work_df['Processor_brand'].dropna().unique())
+    selected_proc_brand = st.selectbox("Processor Brand", proc_brands, key="proc_brand")
+
+# Processor Model
+proc_models = sorted(work_df[
+    (work_df['Brand'] == selected_brand) & 
+    (work_df['Processor_brand'] == selected_proc_brand)
+]['Processor_name'].dropna().unique())
+
+if not proc_models:
+    proc_models = sorted(work_df[work_df['Processor_brand'] == selected_proc_brand]['Processor_name'].dropna().unique())
+
+selected_proc_model = st.selectbox("Processor Model", proc_models, key="proc_model")
+
+# Processor Generation - FIXED: Use available generation data
+# Try to get generations from the dataset
+try:
+    # First try to get from the specific brand and model
+    proc_gens = work_df[
+        (work_df['Brand'] == selected_brand) & 
+        (work_df['Processor_brand'] == selected_proc_brand) &
+        (work_df['Processor_name'] == selected_proc_model)
+    ]['Processor_gen_num'].dropna().unique()
+    
+    # If no specific generations found, try general ones for the model
+    if len(proc_gens) == 0:
+        proc_gens = work_df[
+            (work_df['Processor_name'] == selected_proc_model)
+        ]['Processor_gen_num'].dropna().unique()
+    
+    # If still no generations, use common ones
+    if len(proc_gens) == 0:
+        proc_gens = [8, 9, 10, 11, 12, 13, 14, 101, 102, 103]  # Common Intel/AMD + Apple M-series
+    
+    # Convert to display format
+    gen_display_map = {}
+    for gen in proc_gens:
+        if gen >= 100:  # Apple M-series
+            gen_display_map[f"M{gen-100}"] = gen
+        else:  # Intel/AMD
+            gen_display_map[f"{gen}th Gen"] = gen
+    
+    if gen_display_map:
+        selected_gen_display = st.selectbox("Processor Generation", list(gen_display_map.keys()))
+        selected_gen_num = gen_display_map[selected_gen_display]
+        selected_gen = selected_gen_display
+    else:
+        selected_gen = st.text_input("Processor Generation", value="11th Gen", key="proc_gen_text")
+        selected_gen_num = parse_proc_gen(selected_gen)
+        
+except Exception as e:
+    st.warning(f"Could not load processor generations: {e}")
+    selected_gen = st.text_input("Processor Generation", value="11th Gen", key="proc_gen_text_fallback")
+    selected_gen_num = parse_proc_gen(selected_gen)
+
+# GPU Selection
+st.markdown("#### 🎮 Graphics Configuration")
+col1, col2 = st.columns(2)
+
+with col1:
+    gpu_brands = sorted(work_df['Graphics_brand'].dropna().unique())
+    selected_gpu_brand = st.selectbox("GPU Brand", gpu_brands, key="gpu_brand")
+
+with col2:
+    gpu_models = sorted(work_df[work_df['Graphics_brand'] == selected_gpu_brand]['Graphics_name'].dropna().unique())
+    selected_gpu_model = st.selectbox("GPU Model", gpu_models, key="gpu_model")
+
+# Memory & Storage
+st.markdown("#### 💾 Memory & Storage")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    ram_options = sorted(set(work_df['RAM_GB'].dropna().astype(int).unique()).union({4, 8, 16, 32, 64}))
+    selected_ram = st.selectbox("RAM (GB)", ram_options, index=ram_options.index(16) if 16 in ram_options else 0)
+
+with col2:
+    storage_options = sorted(set(work_df['Storage_capacity_GB'].dropna().astype(int).unique()).union({256, 512, 1024, 2048}))
+    selected_storage = st.selectbox("Storage (GB)", storage_options, 
+                                  index=storage_options.index(512) if 512 in storage_options else 0)
+
+with col3:
+    storage_types = sorted(work_df['Storage_type'].dropna().unique())
+    selected_storage_type = st.selectbox("Storage Type", storage_types, 
+                                       index=storage_types.index('SSD') if 'SSD' in storage_types else 0)
+
+# Display & OS
+st.markdown("#### 🖥️ Display & System")
+col1, col2, col3 = st.columns(3)
+
+with col1:
+    display_sizes = sorted(set(work_df['Display_size_inches'].dropna().astype(float).unique()).union({13.3, 14.0, 15.6, 16.0, 17.3}))
+    selected_display = st.selectbox("Display Size (inches)", display_sizes,
+                                  index=display_sizes.index(15.6) if 15.6 in display_sizes else 0)
+
+with col2:
+    resolution_options = ["1366x768", "1920x1080", "1920x1200", "2560x1440", "2560x1600", "3840x2160"]
+    selected_resolution = st.selectbox("Resolution", resolution_options, index=1)
+
+with col3:
+    os_options = sorted(work_df['Operating_system'].dropna().unique())
+    selected_os = st.selectbox("Operating System", os_options,
+                             index=os_options.index('Windows 11') if 'Windows 11' in os_options else 0)
+
+# Calculate PPI
+h_px, v_px = map(int, selected_resolution.split('x'))
+ppi = math.sqrt(h_px**2 + v_px**2) / selected_display
+
+# Get smart defaults
+defaults = get_smart_defaults(work_df, selected_brand, selected_proc_brand)
+
+# Prediction Button
+if st.button("🚀 Predict Price", type="primary", use_container_width=True):
+    if model is None or pipeline is None:
+        st.error("❌ AI model not available. Please train the model first.")
+    else:
+        with st.spinner("🔄 Analyzing configuration and predicting price..."):
+            time.sleep(1)  # Simulate processing
+            
+            # Prepare input data -  Use correct column names
+            input_data = {
+                "Brand": selected_brand,
+                "Processor_brand": selected_proc_brand,
+                "Processor_name": selected_proc_model,
+                "Processor_variant": "Standard",
+                "Processor_gen": selected_gen,  # Keep original string for categorical
+                "Processor_gen_num": selected_gen_num,  # Numeric version for model
+                "Core_per_processor": defaults['Core_per_processor'],
+                "Threads": defaults['Threads'],
+                "RAM_GB": selected_ram,
+                "Storage_capacity_GB": selected_storage,
+                "Storage_type": selected_storage_type,
+                "Graphics_name": selected_gpu_model,
+                "Graphics_brand": selected_gpu_brand,
+                "Graphics_GB": defaults['Graphics_GB'],
+                "Display_size_inches": selected_display,
+                "Horizontal_pixel": h_px,
+                "Vertical_pixel": v_px,
+                "ppi": ppi,
+                "Operating_system": selected_os
+            }
+            
+            # Create DataFrame
+            input_df = pd.DataFrame([input_data])
+            
+            try:
+                # Transform and predict
+                X_processed = pipeline.transform(input_df)
+                pred_log = model.predict(X_processed)
+                predicted_price = np.expm1(pred_log[0])
+                
+                # Display result
+                st.markdown(f"""
+                <div class="prediction-result">
+                    <h1>₹ {predicted_price:,.0f}</h1>
+                    <h3>Estimated Market Price</h3>
+                    <p>Based on your configuration and current market trends</p>
+                </div>
+                """, unsafe_allow_html=True)
+                
+                # Show configuration summary
+                st.markdown("### 📋 Configuration Summary")
+                config_col1, config_col2 = st.columns(2)
+                
+                with config_col1:
+                    st.write(f"**Brand:** {selected_brand}")
+                    st.write(f"**Processor:** {selected_proc_brand} {selected_proc_model} {selected_gen}")
+                    st.write(f"**RAM:** {selected_ram}GB")
+                    st.write(f"**Storage:** {selected_storage}GB {selected_storage_type}")
+                
+                with config_col2:
+                    st.write(f"**Graphics:** {selected_gpu_brand} {selected_gpu_model}")
+                    st.write(f"**Display:** {selected_display}\" {selected_resolution}")
+                    st.write(f"**OS:** {selected_os}")
+                    st.write(f"**PPI:** {ppi:.1f}")
+                
+                # Price comparison
+                similar_laptops = work_df[
+                    (work_df['Brand'] == selected_brand) &
+                    (work_df['RAM_GB'] == selected_ram) &
+                    (work_df['Storage_capacity_GB'] == selected_storage)
+                ]
+                
+                if not similar_laptops.empty:
+                    avg_similar_price = similar_laptops['Price'].mean()
+                    price_diff = ((predicted_price - avg_similar_price) / avg_similar_price) * 100
+                    
+                    st.markdown("### 📊 Price Analysis")
+                    comp_col1, comp_col2, comp_col3 = st.columns(3)
+                    
+                    with comp_col1:
+                        st.metric("AI Prediction", f"₹{predicted_price:,.0f}")
+                    with comp_col2:
+                        st.metric("Market Average", f"₹{avg_similar_price:,.0f}")
+                    with comp_col3:
+                        st.metric("Difference", f"{price_diff:+.1f}%", 
+                                 delta=f"{price_diff:+.1f}%")
+                
+            except Exception as e:
+                st.error(f"❌ Prediction failed: {str(e)}")
+                st.info("💡 Try adjusting the configuration or check if the model is properly trained")
+
+# Sidebar with tips
+with st.sidebar:
+    st.markdown("### 💡 Prediction Tips")
+    st.info("""
+    - **For accurate results**: Ensure all specifications match real product configurations
+    - **Processor Generation**: Use exact format (e.g., '11th Gen', 'M1', 'Ryzen 5')
+    - **GPU Memory**: Dedicated GPUs typically have 4GB+ VRAM
+    - **Market Data**: Predictions are based on current market trends
+    """)
+    
+    if model is not None:
+        st.success("✅ AI Model: Ready")
+    else:
+        st.warning("⚠️ AI Model: Not Trained")
+        
+    if pipeline is not None:
+        st.success("✅ Preprocessor: Ready")
+    else:
+        st.warning("⚠️ Preprocessor: Not Available")

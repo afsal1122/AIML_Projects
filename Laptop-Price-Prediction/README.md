@@ -1,63 +1,55 @@
-📂 Project Structure
+
+# Laptop Price Prediction System
+
+A full-stack ML application to predict laptop prices, explore data, and recommend laptops.
 
 Laptop-Price-Prediction/
 ├── app/
 │   ├── pages/
-│   │   ├── 1_Price_Predictor.py      # Page: Custom Laptop Pricing
-│   │   └── 2_Data_Explorer.py        # Page: Graphs & Charts
-│   ├── app_utils.py                  # Helper to load models efficiently
-│   └── streamlit_app.py              # Main Page: Recommender
+│   │   ├── 1_Price_Predictor.py
+│   │   └── 2_Data_Explorer.py
+│   ├── app_utils.py
+│   └── streamlit_app.py
 ├── data/
-│   ├── processed/
-│   │   └── training_dataset.csv      # <--- PUT YOUR CSV FILE HERE (Rename it)
+│   ├── raw/
+│   │   └── training_dataset.csv     # raw user dataset (schema unknown)
+│   └── processed/
+│       └── laptops_cleaned.csv       # generated automatically
 ├── models/
-│   └── (Empty initially; scripts create files here)
 ├── src/
 │   ├── data/
-│   │   ├── preprocess.py             # Cleans data & creates pipeline
-│   │   └── features.py               # Feature engineering logic
+│   │   ├── preprocess.py
+│   │   └── features.py
 │   ├── models/
-│   │   ├── train.py                  # Trains the AI "Brain"
-│   │   ├── evaluate.py               # Metrics (RMSE, R2)
-│   │   └── persistence.py            # Save/Load logic
+│   │   ├── persistence.py
+│   │   ├── train.py
+│   │   └── evaluate.py
 │   ├── recommend/
-│   │   └── recommender.py            # Logic for finding best laptops
-│   └── utils.py                      # Logging & Plotting tools
+│   │   └── recommender.py
+│   └── utils.py
 ├── requirements.txt
 └── README.md
 
-1. Setup Files
-requirements.txt
+## Structure
+- **app/**: Streamlit frontend application.
+- **data/**: Raw and processed datasets.
+- **models/**: Saved ML models and evaluation artifacts.
+- **src/**: Source code for preprocessing, training, and utilities.
 
-2. Source Code (src/)
-src/utils.py
+## Installation
 
-src/models/persistence.py
-
-src/models/evaluate.py
-
-src/data/features.py
-
-src/data/preprocess.py This file handles the mapping from your CSV headers to the app's format.
-
-src/models/train.py Uses RandomizedSearchCV to ensure high accuracy.
-
-src/recommend/recommender.py
-
-3. Streamlit Application (app/)
-app/app_utils.py
-
-app/streamlit_app.py (Home Page)
-
-app/pages/1_Price_Predictor.py
-
-app/pages/2_Data_Explorer.py
-
-🚀 Final Steps to Run
-
-
-Process: python -m src.data.preprocess
-
-Train: python -m src.models.train
-
-Run: python -m streamlit run app/streamlit_app.py
+```bash
+pip install -r requirements.txt
+Execution Pipeline
+Preprocess Data (Cleans raw CSV, generates features):
+code
+Bash
+python -m src.data.preprocess
+Train Model (Trains XGBoost, tunes params, saves model):
+code
+Bash
+python -m src.models.train
+Run App:
+code
+Bash
+streamlit run app/streamlit_app.py

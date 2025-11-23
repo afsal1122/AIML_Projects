@@ -1,34 +1,43 @@
+# app/pages/2_Data_Explorer.py
 import streamlit as st
-import matplotlib.pyplot as plt
-import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+import pandas as pd  
 from app.app_utils import load_artifacts
 
-st.set_page_config(page_title="Data Explorer", page_icon="📊", layout="wide")
-df, _, _, _, _ = load_artifacts()
+st.set_page_config(page_title="Market Insights", page_icon="📊", layout="wide")
+
+df, _, _, _, rec = load_artifacts()
+
+if df is None:
+    st.error("Data not found.")
+    st.stop()
 
 st.title("📊 Market Insights")
-st.info(f"Analyzing {len(df)} laptops.")
 
-tab1, tab2 = st.tabs(["📈 Price Trends", "💻 Tech Specs"])
-
-with tab1:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Average Price by Brand")
-        fig, ax = plt.subplots()
-        df.groupby('brand')['price'].mean().sort_values().plot(kind='barh', ax=ax, color='#4F8BF9')
-        st.pyplot(fig)
-    with col2:
-        st.subheader("Price Distribution")
-        fig, ax = plt.subplots()
-        sns.histplot(df['price'], kde=True, ax=ax, color='green')
-        st.pyplot(fig)
-
-with tab2:
-    st.subheader("RAM vs Price Correlation")
-    fig, ax = plt.subplots(figsize=(10, 5))
-    sns.scatterplot(data=df, x='ram_gb', y='price', hue='brand', alpha=0.6, ax=ax)
-    st.pyplot(fig)
+with st.container():
+    # Filters
+    st.markdown("#### Filter Data")
+    col_f1, col_f2 = st.columns(2)
+    f_brands = col_f1.multiselect("Select Brands", df['Brand'].unique(), default=df['Brand'].unique()[:5])
     
-    st.subheader("Raw Data")
-    st.dataframe(df)
+    # Filtered DF
+    dff = df[df['Brand'].isin(f_brands)]
+    
+    row1_1, row1_2 = st.columns(2)
+    
+    with row1_1:
+        st.subheader("Average Price by Brand")
+        avg_price = dff.groupby("Brand")["Price"].mean().reset_index()
+        fig = px.bar(avg_price, x="Brand", y="Price", color="Brand", text_auto='.2s', template="plotly_white")
+        st.plotly_chart(fig, use_container_width=True)
+        
+    with row1_2:
+        st.subheader("Price vs Performance (RAM)")
+        dff['RAM_Num'] = pd.to_numeric(dff['RAM_GB'], errors='coerce')
+        fig2 = px.box(dff, x="RAM_Num", y="Price", color="Brand", template="plotly_white")
+        st.plotly_chart(fig2, use_container_width=True)
+        
+    st.subheader("Processor Market Share (in Dataset)")
+    fig3 = px.sunburst(dff, path=['Processor_brand', 'Processor_name'], values='Price', title="Market Segment by CPU")
+    st.plotly_chart(fig3, use_container_width=True)
