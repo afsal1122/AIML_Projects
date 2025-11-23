@@ -235,13 +235,10 @@ We welcome contributions\! Please feel free to submit pull requests.
 -----
 
 <div align="center">
-<h3>💻 Make Smart Tech Decisions with AI 💻\</h3>
-<strong\>Accurate Predictions | Data-Driven Insights | Smart Choices\</strong>
+<h3>💻 Make Smart Tech Decisions with AI 💻</h3>
+<strong\>Accurate Predictions | Data-Driven Insights | Smart Choices</strong>
 </div>
 
 -----
 
 **⭐ If you find this project helpful, please give it a star on GitHub\!**
-
-```
-```
