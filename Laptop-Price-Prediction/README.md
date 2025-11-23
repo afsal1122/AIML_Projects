@@ -27,8 +27,8 @@ An AI-powered application that estimates laptop prices in real-time using advanc
 
 1. **Clone the repository**
 ```bash
-git clone [https://github.com/yourusername/Laptop-Price-Prediction.git](https://github.com/afsal1122/AIML_Projects/tree/main/Laptop-Price-Prediction)
-cd Laptop-Price-Prediction
+git clone [https://github.com/afsal1122/AIML_Project.git]
+cd AIML_Project/Laptop-Price-Prediction
 ````
 
 2.  **Create virtual environment**

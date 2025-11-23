@@ -33,7 +33,7 @@ An AI-powered network security monitoring system that detects malicious packets 
 
 1. **Clone the repository**
 ```bash
-git clone [https://github.com/afsal1122/AIML_Project.git](https://github.com/afsal1122/AIML_Project.git)
+git clone [https://github.com/afsal1122/AIML_Project.git]
 cd AIML_Project/network-packet-classifier
 ````
 
