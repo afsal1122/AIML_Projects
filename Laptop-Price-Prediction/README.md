@@ -27,7 +27,7 @@ An AI-powered application that estimates laptop prices in real-time using advanc
 
 1. **Clone the repository**
 ```bash
-git clone [[https://github.com/yourusername/Laptop-Price-Prediction.git](https://github.com/afsal1122/AIML_Projects/tree/main/Laptop-Price-Prediction)]
+git clone [https://github.com/yourusername/Laptop-Price-Prediction.git](https://github.com/afsal1122/AIML_Projects/tree/main/Laptop-Price-Prediction)
 cd Laptop-Price-Prediction
 ````
 
@@ -121,7 +121,7 @@ Laptop-Price-Prediction/
 ### Machine Learning Pipeline
 
 ```
-Raw Data → Preprocessing & Imputation → Feature Engineering → Model Training (RF/XGB) → Serialization
+Raw Data → Preprocessing & Imputation → Feature Engineering → Model Training (RF) → Serialization
 ```
 
 ### System Components
