@@ -23,8 +23,8 @@ try:
 except ImportError:
     # Fallback if import fails
     NUMERIC_FEATURES = [
-        "Processor_gen_num", "Core_per_processor", "Threads", "RAM_GB",
-        "Storage_capacity_GB", "Graphics_GB", "Display_size_inches",
+        "Processor_gen_num", "Threads", "RAM_GB",
+        "Storage_capacity_GB", "Display_size_inches",
         "Horizontal_pixel", "Vertical_pixel", "ppi",
     ]
     
@@ -74,18 +74,6 @@ def parse_proc_gen_to_num(val):
 
     return np.nan
 
-def extract_vram(gpu_name):
-    """Extract VRAM from GPU name"""
-    if pd.isna(gpu_name):
-        return np.nan
-    try:
-        match = re.search(r'(\d+)\s*GB', str(gpu_name), re.IGNORECASE)
-        if match:
-            return int(match.group(1))
-    except:
-        pass
-    return np.nan
-
 def load_raw():
     for p in RAW_PATHS:
         if p.exists():
@@ -119,8 +107,8 @@ def clean_and_select(df: pd.DataFrame) -> pd.DataFrame:
             df[c] = "Unknown"
 
     # Numeric conversions
-    numeric_cols = ["Core_per_processor", "Threads", "RAM_GB", "Storage_capacity_GB",
-                   "Graphics_GB", "Display_size_inches", "Horizontal_pixel", "Vertical_pixel", "ppi"]
+    numeric_cols = ["Threads", "RAM_GB", "Storage_capacity_GB",
+                   "Display_size_inches", "Horizontal_pixel", "Vertical_pixel", "ppi"]
     
     for col in numeric_cols:
         if col in df.columns:
@@ -136,9 +124,6 @@ def clean_and_select(df: pd.DataFrame) -> pd.DataFrame:
 
     # Create Processor_gen_num
     df["Processor_gen_num"] = df["Processor_gen"].apply(parse_proc_gen_to_num)
-
-    # Extract VRAM from Graphics_name if Graphics_GB is missing
-    df["Graphics_GB"] = df["Graphics_GB"].fillna(df["Graphics_name"].apply(extract_vram))
 
     # Calculate PPI if missing
     mask = df["Horizontal_pixel"].notna() & df["Vertical_pixel"].notna() & df["Display_size_inches"].notna()

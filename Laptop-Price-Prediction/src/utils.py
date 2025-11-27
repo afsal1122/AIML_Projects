@@ -20,11 +20,9 @@ FEATURE_NAMES_PATH = os.path.join(MODELS_DIR, "feature_names.json")
 # Feature Definitions (Updated)
 NUMERIC_FEATURES = [
     "Processor_gen_num",
-    "Core_per_processor", 
     "Threads",
     "RAM_GB",
     "Storage_capacity_GB",
-    "Graphics_GB",
     "Display_size_inches",
     "Horizontal_pixel",
     "Vertical_pixel",

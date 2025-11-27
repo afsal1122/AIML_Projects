@@ -216,14 +216,12 @@ if st.button("🚀 Predict Price", type="primary", use_container_width=True):
                 "Processor_variant": "Standard",
                 "Processor_gen": selected_gen,  # Keep original string for categorical
                 "Processor_gen_num": selected_gen_num,  # Numeric version for model
-                "Core_per_processor": defaults['Core_per_processor'],
                 "Threads": defaults['Threads'],
                 "RAM_GB": selected_ram,
                 "Storage_capacity_GB": selected_storage,
                 "Storage_type": selected_storage_type,
                 "Graphics_name": selected_gpu_model,
                 "Graphics_brand": selected_gpu_brand,
-                "Graphics_GB": defaults['Graphics_GB'],
                 "Display_size_inches": selected_display,
                 "Horizontal_pixel": h_px,
                 "Vertical_pixel": v_px,
