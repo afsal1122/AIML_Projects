@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import mediapipe as mp
 import autopy
+import pyautogui
 import time
 import math
 import threading
@@ -41,8 +42,8 @@ FRAME_INSET_BOTTOM = 250
 FRAME_INSET_LEFT = 150    # Pixels from left 
 FRAME_INSET_RIGHT = 150   # Pixels from right 
 # You can increase this more (e.g., 10) for even smoother, but "heavier" movement.
-SMOOTHING = 6
-CLICK_CONFIDENCE_TIME = 0.15    # Time (sec) gesture must be held for a click
+SMOOTHING = 7
+CLICK_CONFIDENCE_TIME = 0.2    # Time (sec) gesture must be held for a click
 DEBUG_MODE = True               # Show debug overlays (landmarks, boxes, text)
 # ---------------------------------------------------
 
@@ -126,26 +127,21 @@ class GestureRecognizer:
             
         fingers = []
 
-        # *** ROBUST THUMB FIX ***
-        # Checks X-coordinate of tip relative to its next joint.
-        tip_x = lm_list[self.tip_ids[0]][1]
-        joint_x = lm_list[self.tip_ids[0] - 1][1]
-
-        # This logic assumes a "flipped" image (mirror mode)
-        if self.handedness == "Right": # Flipped Left Hand
-            if tip_x > joint_x:
-                fingers.append(1)
-            else:
-                fingers.append(0)
-        elif self.handedness == "Left": # Flipped Right Hand
-            if tip_x < joint_x:
-                fingers.append(1)
-            else:
-                fingers.append(0)
+        # *** ROBUST THUMB FIX (Distance Based) ***
+        # Calculate distance between Thumb Tip (4) and Middle Finger MCP (9)
+        x4, y4 = lm_list[4][1], lm_list[4][2]
+        x9, y9 = lm_list[9][1], lm_list[9][2]
+        thumb_dist = math.hypot(x4 - x9, y4 - y9)
+        
+        # Calculate scale of hand (Wrist (0) to Middle Finger MCP (9))
+        x0, y0 = lm_list[0][1], lm_list[0][2]
+        scale_dist = math.hypot(x0 - x9, y0 - y9)
+        
+        # Threshold: If thumb tip is far enough from the center of the palm, it's open.
+        if thumb_dist > 0.4 * scale_dist:
+            fingers.append(1)
         else:
-             # Fallback if handedness is not detected
-             fingers.append(0)
-
+            fingers.append(0)
 
         # Other 4 Fingers: Check if tip Y is above (lower value) the joint 2 steps down
         for id in range(1, 5):
@@ -183,6 +179,7 @@ class GestureController:
         self.is_dragging = False
         self.last_gesture = None
         self.gesture_start_time = 0
+        self.action_triggered = False
 
     def process_gesture(self, gesture, lm_list, cam_w, cam_h, img):
         """
@@ -196,6 +193,7 @@ class GestureController:
                 self.is_dragging = False
                 print("Drag Released (Hand Lost)")
             self.last_gesture = None
+            self.action_triggered = False
             return None
 
         # --- Get coordinates for cursor ---
@@ -223,6 +221,7 @@ class GestureController:
         if gesture != self.last_gesture:
             self.last_gesture = gesture
             self.gesture_start_time = time.time()
+            self.action_triggered = False # Reset trigger for new gesture
             if self.is_dragging and gesture != [0, 1, 1, 1, 1]:
                  autopy.mouse.toggle(down=False)
                  self.is_dragging = False
@@ -263,34 +262,40 @@ class GestureController:
             
             # GESTURE: Left Click (Index + Middle up)
             if gesture == [0, 1, 1, 0, 0]:
-                action = "Left Click"
-                print(action)
-                autopy.mouse.click()
+                if not self.action_triggered:
+                    action = "Left Click"
+                    print(action)
+                    autopy.mouse.click()
+                    self.action_triggered = True
 
             # GESTURE: Double Click (Index + Pinky up)
             elif gesture == [0, 1, 0, 0, 1]:
-                action = "Double Click"
-                print(action)
-                autopy.mouse.click(delay=0.01)
-                autopy.mouse.click(delay=0.01)
+                if not self.action_triggered:
+                    action = "Double Click"
+                    print(action)
+                    autopy.mouse.click(delay=0.01)
+                    autopy.mouse.click(delay=0.01)
+                    self.action_triggered = True
             
             # GESTURE: Right Click (Thumb up only)
             elif gesture == [1, 0, 0, 0, 0]:
-                action = "Right Click"
-                print(action)
-                autopy.mouse.click(autopy.mouse.Button.RIGHT)
+                if not self.action_triggered:
+                    action = "Right Click"
+                    print(action)
+                    autopy.mouse.click(autopy.mouse.Button.RIGHT)
+                    self.action_triggered = True
             
             # GESTURE: Scroll Up (All fingers up)
             elif gesture == [1, 1, 1, 1, 1]:
                 action = "Scroll Up"
                 print(action)
-                autopy.mouse.scroll(100) # Positive value scrolls up
+                pyautogui.scroll(100) # FIXED: Use pyautogui
 
             # GESTURE: Scroll Down (All fingers down / fist)
             elif gesture == [0, 0, 0, 0, 0]:
                 action = "Scroll Down"
                 print(action)
-                autopy.mouse.scroll(-100) # Negative value scrolls down
+                pyautogui.scroll(-100) # FIXED: Use pyautogui
 
             # GESTURE: Speech Typing (Middle finger up only)
             elif gesture == [0, 0, 1, 0, 0]:
@@ -381,6 +386,7 @@ def main():
     speech_stop_event = threading.Event()
     speech_thread = None
     is_speech_mode = False
+    last_speech_toggle_time = 0
     
     print("AI Gesture Mouse Control starting...")
     print(f"Screen Size: {screen_w} x {screen_h}")
@@ -416,28 +422,34 @@ def main():
                     current_gesture, lm_list, actual_cam_w, actual_cam_h, img
                 )
 
-            # --- 4. Speech Mode Logic ---
+            # --- 4. Speech Mode Logic (Toggle) ---
             if current_gesture == [0, 0, 1, 0, 0] and action == "Speech Mode":
-                if not is_speech_mode and (sr is not None):
-                    print("STARTING SPEECH MODE")
-                    is_speech_mode = True
-                    speech_stop_event.clear()
-                    speech_thread = threading.Thread(
-                        target=recognize_speech_thread,
-                        args=(speech_queue, speech_stop_event),
-                        daemon=True
-                    )
-                    speech_thread.start()
-            else:
-                if is_speech_mode:
-                    print("STOPPING SPEECH MODE")
-                    is_speech_mode = False
-                    speech_stop_event.set()
-                    if speech_thread:
-                        speech_thread.join(timeout=1)
-                    speech_thread = None
-                    while not speech_queue.empty():
-                        speech_queue.get()
+                current_time = time.time()
+                if (current_time - last_speech_toggle_time) > 2.0: # 2 second debounce
+                    last_speech_toggle_time = current_time
+                    
+                    if not is_speech_mode:
+                        # Turn ON
+                        if sr is not None:
+                            print("STARTING SPEECH MODE")
+                            is_speech_mode = True
+                            speech_stop_event.clear()
+                            speech_thread = threading.Thread(
+                                target=recognize_speech_thread,
+                                args=(speech_queue, speech_stop_event),
+                                daemon=True
+                            )
+                            speech_thread.start()
+                    else:
+                        # Turn OFF
+                        print("STOPPING SPEECH MODE")
+                        is_speech_mode = False
+                        speech_stop_event.set()
+                        if speech_thread:
+                            speech_thread.join(timeout=1)
+                        speech_thread = None
+                        while not speech_queue.empty():
+                            speech_queue.get()
 
             # --- 5. Process Speech Queue ---
             try:
