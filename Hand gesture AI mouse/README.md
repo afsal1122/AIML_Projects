@@ -66,6 +66,8 @@ The camera window will appear — keep your hand inside the green control region
 | 🖖 | All except thumb up |	Drag Mode	Click and hold for drag |
 | 🖕 | Middle finger up only	| Voice Typing Mode	Enables speech-to-text typing
 
+![Gesture Guide](gesture_guide.png)
+
 ---
 
 ## ⚙️ Calibration & Tips

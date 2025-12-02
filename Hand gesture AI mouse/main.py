@@ -29,6 +29,11 @@ except ImportError:
     sr = None
     AUDIO_LIB = None
 
+if AUDIO_LIB:
+    print(f"Audio Library Loaded: {AUDIO_LIB}")
+else:
+    print("No Audio Library Loaded")
+
 # --- Global Configuration (UPDATED) ---
 
 CAM_WIDTH, CAM_HEIGHT = 1280, 720 
@@ -298,7 +303,9 @@ class GestureController:
                 pyautogui.scroll(-100) # FIXED: Use pyautogui
 
             # GESTURE: Speech Typing (Middle finger up only)
-            elif gesture == [0, 0, 1, 0, 0]:
+            # GESTURE: Speech Typing (Middle finger up only)
+            # RELAXED: Allow thumb to be open or closed ([0, 0, 1, 0, 0] OR [1, 0, 1, 0, 0])
+            elif gesture == [0, 0, 1, 0, 0] or gesture == [1, 0, 1, 0, 0]:
                 action = "Speech Mode"
                 # Action is handled in main loop to manage thread
 
@@ -423,7 +430,8 @@ def main():
                 )
 
             # --- 4. Speech Mode Logic (Toggle) ---
-            if current_gesture == [0, 0, 1, 0, 0] and action == "Speech Mode":
+            # RELAXED CHECK HERE TOO
+            if (current_gesture == [0, 0, 1, 0, 0] or current_gesture == [1, 0, 1, 0, 0]) and action == "Speech Mode":
                 current_time = time.time()
                 if (current_time - last_speech_toggle_time) > 2.0: # 2 second debounce
                     last_speech_toggle_time = current_time
@@ -456,8 +464,6 @@ def main():
                 text_to_type = speech_queue.get_nowait()
                 if "ERROR:" in text_to_type:
                     print(f"Speech Thread Error: {text_to_type}")
-                    is_speech_mode = False
-                    speech_stop_event.set()
                 else:
                     print(f"Typing: {text_to_type}")
                     autopy.key.type_string(text_to_type)
